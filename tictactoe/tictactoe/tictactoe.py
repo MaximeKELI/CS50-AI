@@ -2,8 +2,8 @@
 Tic Tac Toe Player
 """
 
-import copy
 import math
+import copy
 
 X = "X"
 O = "O"
@@ -22,21 +22,16 @@ def initial_state():
 def player(board):
     """
     Returns player who has the next turn on a board.
+
+    X gets first move when given an initial state of a board
     """
-    num_x = 0
-    num_o = 0
-    for row in board:
-        for col in row:
-            if col == X:
-                num_x += 1
-            if  col == O:
-                num_o += 1
+    is_even = True
+    for row in range(len(board)):
+        for col in range(len(board[0])):
+            if board[row][col] != EMPTY:
+                is_even = not is_even
 
-    if num_o == num_x:
-        return X
-
-    else:
-        return O
+    return X if is_even else O
 
 
 def actions(board):
@@ -44,8 +39,8 @@ def actions(board):
     Returns set of all possible actions (i, j) available on the board.
     """
     possible_actions = set()
-    for row in range(3):
-        for col in range(3):
+    for row in range(len(board)):
+        for col in range(len(board[0])):
             if board[row][col] == EMPTY:
                 possible_actions.add((row, col))
 
@@ -56,121 +51,130 @@ def result(board, action):
     """
     Returns the board that results from making move (i, j) on the board.
     """
-    row = action[0]
-    col = action[1]
+    # Checks for edge cases where action is a coordinate that is out of bounds or a coordinate that has an X or O already placed
+    if action[0] < 0 or action[0] > 2 or action[1] < 0 or action[1] > 2:
+        raise Exception("Sorry, action has coordinated that are out of bounds.")
+    elif board[action[0]][action[1]] != EMPTY:
+        raise Exception("Sorry, a move was already placed here.")
 
-    if board[row][col] != EMPTY:
-        raise Exception("The move is invalid, please check your move")
+    result_board = copy.deepcopy(board)
+    player_turn = player(result_board)
+    result_board[action[0]][action[1]] = player_turn
 
-    board_copy = copy.deepcopy(board)
-
-    turn = player(board_copy)
-
-    board_copy[row][col] = turn
-
-    return board_copy
+    return result_board
 
 
 def winner(board):
     """
     Returns the winner of the game, if there is one.
     """
-    #Row check
-    for row in range(3):
-        candidate = board[row][0]
-        if candidate is not None and candidate == board[row][1] and candidate == board[row][2]:
-            return candidate
+    # Checks rows
+    for row in range(len(board)):
+        if board[row][0] != EMPTY and board[row][0] == board[row][1] == board[row][2]:
+            return board[row][0]
 
-    #Column check
-    for col in range(3):
-        candidate = board[0][col]
-        if candidate is not None and candidate == board[1][col] and candidate == board[2][col]:
-            return candidate
+    # Checks columns
+    for col in range(len(board[0])):
+        if board[0][col] != EMPTY and board[0][col] == board[1][col] == board[2][col]:
+            return board[0][col]
 
-    #Diagonals check
-    candidate = board[1][1]
-    if candidate is not None and (candidate == board[0][0] and candidate == board[2][2]) or \
-    (candidate == board[0][2] and candidate == board[2][0]):
-        return candidate
+    # Checks major diagonal
+    if board[0][0] != EMPTY and board[0][0] == board[1][1] == board[2][2]:
+        return board[0][0]
+
+    # Checks minor diagonal
+    if board[0][2] != EMPTY and board[0][2] == board[1][1] == board[2][0]:
+        return board[0][2]
 
     return None
-
 
 
 def terminal(board):
     """
     Returns True if game is over, False otherwise.
     """
-    if winner(board) is None:
-        for row in board:
-            for col in row:
-                if col == EMPTY:
-                    return False
+    spaces_filled = True
 
-    return True
+    # Checks rows and also checks if all spaces are not empty
+    for row in range(len(board)):
+        if board[row][0] != EMPTY and board[row][0] == board[row][1] == board[row][2]:
+            return True
+        if board[row][0] == EMPTY or board[row][1] == EMPTY or board[row][2] == EMPTY:
+            spaces_filled = False
+
+    # Checks columns
+    for col in range(len(board[0])):
+        if board[0][col] != EMPTY and board[0][col] == board[1][col] == board[2][col]:
+            return True
+
+    # Checks major diagonal
+    if board[0][0] != EMPTY and board[0][0] == board[1][1] == board[2][2]:
+        return True
+
+    # Checks minor diagonal
+    if board[0][2] != EMPTY and board[0][2] == board[1][1] == board[2][0]:
+        return True
+
+    return spaces_filled
 
 
 def utility(board):
     """
     Returns 1 if X has won the game, -1 if O has won, 0 otherwise.
     """
-    potential_winner = winner(board)
-    if potential_winner == X:
+    winning_player = winner(board)
+
+    if winning_player == X:
         return 1
-    elif potential_winner == O:
+    elif winning_player == O:
         return -1
     else:
         return 0
 
 
-
 def minimax(board):
     """
     Returns the optimal action for the current player on the board.
+
+    Maximize if player is X and minimize if player is O
+
+    Optimizations to consider: Alpha-Beta Pruning
     """
-    if terminal(board):
-        return None
+    # Helper function to decide best action for player X
+    def max_value(board):
+        if terminal(board):
+            return (utility(board), None)
 
-    if player(board) == X:
-        cur_result = (None, -math.inf)
-        for action in actions(board):
-            score = minimax_algorithm(result(board, action), False)
-            if score == 1:
-                return action
-            if score > cur_result[1]:
-                cur_result = (action, score)
+        value = float('-inf')
+        optimal_action = None
+        for potential_action in actions(board):
+            potential_board = result(board, potential_action)
+            potential_board_value = min_value(potential_board)[0]
+            if potential_board_value > value:
+                value = potential_board_value
+                optimal_action = potential_action
 
-        return cur_result[0]
+        return (value, optimal_action)
 
+    # Helper function to decide best action for player O
+    def min_value(board):
+        if terminal(board):
+            return (utility(board), None)
 
-    cur_result = (None, math.inf)
-    for action in actions(board):
-        score = minimax_algorithm(result(board, action), True)
-        if score == -1:
-            return action
-        if score < cur_result[1]:
-            cur_result = (action, score)
+        value = float('inf')
+        optimal_action = None
+        for potential_action in actions(board):
+            potential_board = result(board, potential_action)
+            potential_board_value = max_value(potential_board)[0]
+            if potential_board_value < value:
+                value = potential_board_value
+                optimal_action = potential_action
 
-    return cur_result[0]
+        return (value, optimal_action)
 
+    current_player = player(board)
+    optimal_action = None
 
-def minimax_algorithm(board, max_min_player):
-    """ The AI player logic recursive algorithm to get the optimal move """
-    if terminal(board):
-        return utility(board)
+    optimal_action = max_value(board)[1] if current_player == X else min_value(board)[1]
 
-    if max_min_player:
-        cur_score = -math.inf
-        for action in actions(board):
-            new_board = result(board, action)
-            cur_score = max(cur_score, minimax_algorithm(new_board, False))
-
-        return cur_score
-
-    elif not max_min_player:
-        cur_score = math.inf
-        for action in actions(board):
-            new_board = result(board, action)
-            cur_score = min(cur_score, minimax_algorithm(new_board, True))
-
-        return cur_score
+    return optimal_action
