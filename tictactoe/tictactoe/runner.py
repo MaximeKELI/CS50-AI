@@ -1,9 +1,6 @@
-""" The runner for tictactoe pygame """
-
+import pygame
 import sys
 import time
-import pygame
-
 
 import tictactoe as ttt
 
